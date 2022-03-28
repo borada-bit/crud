@@ -1,14 +1,17 @@
 from flask import Flask
-from redis import Redis
 import os
+
 app = Flask(__name__)
-redis = Redis(host='redis', port=6379)
+
+counter = 0
 
 @app.route('/')
 def hello():
-	redis.incr('counter')
-	return 'Hi! You saw me %s times!' % redis.get('counter')
+    global counter
+    counter = counter + 1
+    print('incrementing counter')
+    return (f'Hi! You saw me {counter} times!')
 
 if __name__=='__main__':
-	app.run(host="0.0.0.0", debug = True, port=80)
+    app.run(host="0.0.0.0", debug = True, port=80)
 	

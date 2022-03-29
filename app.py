@@ -1,6 +1,39 @@
 from flask import Flask, request, jsonify, json
+from flask import Response
+import jsonschema
+from jsonschema import validate
 
 app = Flask(__name__)
+
+schema = {
+    "type": "object",
+    "properties":{
+        "title": {
+            "type": "string"
+            },
+        "year": {
+            "type": "integer",
+            "maximum": 2022
+            },   
+        "genre": {
+            "type": "string"
+            },
+        "director": {
+            "type": "string"
+            },
+        "runtime": {
+            "type": "integer"
+            }
+        },
+    "required":[
+        "title",
+        "year",
+        "genre",
+        "director",
+        "runtime"
+        ]
+    }
+
 
 data_1 = {
     "title": "Dune",
@@ -57,28 +90,47 @@ def read():
     return jsonify(dictlist)
 
 
+@app.route('/movies/<int:movie_id>', methods=['GET'])
+def get_all_movies(movie_id):
+    try:
+        dictlist[movie_id]
+        return jsonify(dictlist[movie_id])
+    except:
+        return Response(json.dumps({'Error': 'No such id exists'}),status=404, mimetype="application/json")
+
+
 @app.route('/movies', methods=['POST'])
 def create():
     movie_data = json.loads(request.data)
-    dictlist.append(movie_data)
-    return jsonify(movie_data)
+    try:
+        validate(instance=movie_data, schema=schema)
+        dictlist.append(movie_data)
+        return jsonify(movie_data)
+    except jsonschema.exceptions.ValidationError as e:
+        return Response(jsonify(movie_data), status=422, mimetype="application/json")
 
-@app.route('/movies/<movie_id>', methods=['GET'])
-def get_all_movies(movie_id):
-    return jsonify(dictlist[int(movie_id)])
 
-@app.route('/movies/<movie_id>', methods=['PUT'])
+@app.route('/movies/<int:movie_id>', methods=['PUT'])
 def update_movie(movie_id):
-    movie_data = json.loads(request.data)
-    dictlist[int(movie_id)] = movie_data
-    return jsonify(movie_data)
+    try:
+        dictlist[movie_id]
+        movie_data = json.loads(request.data)
+        dictlist[movie_id] = movie_data
+        return jsonify(movie_data)
+    except:
+        return Response(json.dumps({'Error': 'No such id exists'}),status=404, mimetype="application/json")
 
-@app.route('/movies/<movie_id>', methods=['DELETE'])
+
+@app.route('/movies/<int:movie_id>', methods=['DELETE'])
 def delete_movie(movie_id):
-    movie = dictlist[int(movie_id)]
-    del dictlist[int(movie_id)]
-    return jsonify(movie)
-    
+    try:
+        dictlist[movie_id]
+        movie = dictlist[movie_id]
+        del dictlist[movie_id]
+        return jsonify(movie)
+    except:
+        return Response(json.dumps({'Error': 'No such id exists'}),status=404, mimetype="application/json")
+
 
 if __name__=='__main__':
     app.run(host="0.0.0.0", debug = True, port=80)

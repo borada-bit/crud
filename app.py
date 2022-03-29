@@ -85,7 +85,7 @@ def hello():
     return (f'Hello!')
 
 
-@app.route('/movies', methods=['GET'])
+@app.route('/movies/', methods=['GET'])
 def read():
     return jsonify(dictlist)
 
@@ -99,7 +99,7 @@ def get_all_movies(movie_id):
         return Response(json.dumps({'Error': 'No such id exists'}),status=404, mimetype="application/json")
 
 
-@app.route('/movies', methods=['POST'])
+@app.route('/movies/', methods=['POST'])
 def create():
     movie_data = json.loads(request.data)
     try:
@@ -107,6 +107,7 @@ def create():
         dictlist.append(movie_data)
         return jsonify(movie_data)
     except jsonschema.exceptions.ValidationError as e:
+        # Unprocessable Entity
         return Response(jsonify(movie_data), status=422, mimetype="application/json")
 
 

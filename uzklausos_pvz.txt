@@ -1,5 +1,0 @@
-curl -i -H "Content-Type: application/json" -X POST -d '{"title":"Avengers", "year": 2012, "genre": "action", "director": "Josh Whedon", "runtime": 143}' http://localhost:80/movies
-
-curl http://localhost:80/movies/1 -X DELETE
-
-curl -i -H "Content-Type: application/json" -X PUT -d '{"title":"Batman", "year": 2022, "genre": "action", "director": "Matt Reeves", "runtime": 144}' http://localhost:80/movies/1

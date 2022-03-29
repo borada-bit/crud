@@ -6,7 +6,7 @@ Sample Web Service CRUD application Movie database
 docker
 
 
-### To launch:
+## To launch:
 
 `docker build -t crud .`
 
@@ -35,7 +35,7 @@ Movie json structure {
 }
 
 
-#### RESTFUL API:
+## RESTFUL API:
 
 `curl is a command-line tool for transferring data using various network protocols`
 

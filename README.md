@@ -11,6 +11,8 @@ git
 
 `git clone https://github.com/borada-bit/crud.git`
 
+`cd crud`
+
 `docker build -t crud .`
 
 `docker run -d -p 80:80 --name crud_test crud`

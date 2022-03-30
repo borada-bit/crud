@@ -192,7 +192,13 @@ def patch_movie(movie_id):
             old_movie_data = dictlist[i].copy()
             for j in range(len(new_keys)):
                 dictlist[i][new_keys[j]] = new_movie_data[new_keys[j]]
-            
+            ##CHECKING IF PATCHED DICT IS GOOD FORMAT
+            try:
+                validate(instance=dictlist[i], schema=schema)
+            except jsonschema.exceptions.ValidationError as e:
+                dictlist[i] = old_movie_data
+                return Response(json.dumps({'Error': 'Wrong schema'}), status=422, mimetype="application/json")
+
             resp = Response(json.dumps(str(old_movie_data)+str(" CHANGED TO ")+str(dictlist[i])),status=404, mimetype="application/json")
             resp.headers['Location'] = "http://localhost:80/movies/"+str(movie_id)
             return resp

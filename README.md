@@ -48,21 +48,29 @@ Movie json structure {
 
 (CREATE)
 POST http://localhost:80/movies
+
 Example: `curl -i -H "Content-Type: application/json" -X POST -d '{"title":"Avengers", "year": 2012, "genre": "action", "director": "Josh Whedon", "runtime": 143}' http://localhost:80/movies/`
 
 
 (READ)
 GET http://localhost:80/movies/<movie_id>
+
 Example: `curl http://localhost:80/movies/1 -X GET`
 
 
 (READ ALL)
 GET http://localhost:80/movies/
+
 Example: `curl http://localhost:80/movies/ -X GET`
 
 
 (UPDATE)
+<<<<<<< HEAD
 PUT http://localhost:80/movies/<movie_id>
+=======
+PUT http://localhost:80/movies/
+
+>>>>>>> 04609143b0fd52fc568c98ed4e55f538fb3d37b8
 Example: `curl -i -H "Content-Type: application/json" -X PUT -d '{"title":"The Batman Begins", "year": 2005, "genre": "action", "director": "Christopher Nolan", "runtime": 140}' http://localhost:80/movies/1`
 
 
@@ -73,4 +81,5 @@ Example: `curl -i -H "Content-Type: application/json" -X PATCH -d '{"genre": "Th
 
 (DELETE)
 DELETE http://localhost:80/movies/<movie_id>
+
 Example: `curl http://localhost:80/movies/1 -X DELETE`

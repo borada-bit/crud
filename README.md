@@ -4,6 +4,7 @@ Sample Web Service CRUD application Movie database
 
 ## Requirements:
 docker
+
 git
 
 ## To launch:

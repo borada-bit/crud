@@ -8,8 +8,16 @@ from flask import Response
 import jsonschema
 from jsonschema import validate
 import random
+import pymongo.errors
+from pymongo import MongoClient
 
 app = Flask(__name__)
+
+client = MongoClient("mongodb://mongo:27017")
+
+db = client.test
+db.my_collection
+
 
 schema = {
     "type": "object",
@@ -98,6 +106,12 @@ data_5 = {
     "comment": ""
         }
 
+db.my_collection.insert_one(data_1).inserted_id
+db.my_collection.insert_one(data_2).inserted_id
+db.my_collection.insert_one(data_3).inserted_id
+db.my_collection.insert_one(data_4).inserted_id
+db.my_collection.insert_one(data_5).inserted_id
+
 
 dictlist = [data_1, data_2, data_3, data_4, data_5]
 
@@ -109,11 +123,15 @@ def hello():
 
 @app.route('/movies/', methods=['GET'])
 def get_movie():
+    return "hello"
     return jsonify(dictlist)
 
 
 @app.route('/movies/<int:movie_id>', methods=['GET'])
 def get_all_movies(movie_id):
+    if movie_id == 50:
+        movies = db.my_collection.find_one()
+        return Response(json.dumps(movies),status=200, mimetype="application/json")
     for i in dictlist:
         if i['id'] == movie_id:
             # 200 OK
@@ -219,6 +237,28 @@ def delete_movie(movie_id):
     return Response(json.dumps({'Error': 'No such id exists'}),status=404, mimetype="application/json")
 
 
+def add_to_coll(coll, data):
+    try:
+        coll.insert_one(data)
+    except pymongo.errors.DuplicateKeyError:
+        print('Error inserting. This id already exist')
+
+
 if __name__=='__main__':
+    print(pymongo.version)
+    print(pymongo.has_c())
     app.run(host="0.0.0.0", debug = True, port=80)
+
+    # Add movie
+ #   collection = db_movies.movie
+  #  temp_data = {
+   #     '_id': 6,
+    #    'title': "Inception",
+     #   'year': 2010,
+      #  'genre': 'sci-fi',
+       # 'reviews': []
+    #}
+    #add_to_coll(collection, temp_data)
+    
+
 	

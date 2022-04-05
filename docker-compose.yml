@@ -1,19 +1,14 @@
 version: "3.9"
 
+volumes:
+  db-data:
+
 services: 
   # mongo
-  mongodb:
-    container_name: mongodb
+  mongo:
     image: mongo
-    environment:
-      - MONGO_INITDB_DATABASE=movie_database
     ports:
       - 27017:27017
-
-  mongo_seed:
-    build: ./mongo-seed
-    depends_on:
-        - mongodb
 
   # application
   web: 
@@ -21,7 +16,8 @@ services:
       context: ./app
       dockerfile: Dockerfile
     ports:
-      - 80:80
-    depends_on:
-      - mongodb
+      - "80:80"
+    environment:
+      DB_URL: 'mongo:27017'
+
 

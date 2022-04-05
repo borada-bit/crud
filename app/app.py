@@ -1,9 +1,9 @@
-from cgitb import text
 from email import header
 import mimetypes
 from wsgiref import headers
 from xxlimited import new
-from flask import Flask, request, jsonify, json, Response
+from flask import Flask, request, jsonify, json
+from flask import Response
 import jsonschema
 from jsonschema import validate
 import random
@@ -14,7 +14,7 @@ from bson import json_util
 app = Flask(__name__)
 
 client = MongoClient("mongodb://mongo:27017")
-
+client.drop_database('movie_database')
 db = client.movie_database
 db.movie_collection
 
@@ -55,15 +55,62 @@ schema = {
     }
 
 
-# dictlist = [data_1, data_2, data_3, data_4, data_5]
-# {'id': 1, 'title': 'Dune', 'year': 2021, 'genre': 'sci-fi', 'director': 'Dennis Villenueve', 'runtime': 150, 'comment': '', '_id': ObjectId('624bf126ef9ed9e0ec5c0436')}
-# print(dictlist[0])
+data_1 = {
+    "id": 1,
+    "title": "Dune",
+    "year": 2021,
+    "genre": "sci-fi",
+    "director": "Dennis Villenueve",
+    "runtime": 150,
+    "comment": ""
+        }
 
-#db.my_collection.insert_one(data_1)
-#db.my_collection.insert_one(data_2).inserted_id
-#db.my_collection.insert_one(data_3).inserted_id
-#db.my_collection.insert_one(data_4).inserted_id
-#db.my_collection.insert_one(data_5).inserted_id
+data_2 = {
+    "id": 2,
+    "title": "Batman",
+    "year": 2022,
+    "genre": "action",
+    "director": "Matt Reeves",
+    "runtime": 176,
+    "comment": ""
+        }
+
+data_3 = {
+    "id": 3,
+    "title": "Forrest Gump",
+    "year": 1994,
+    "genre": "drama",
+    "director": "Robert Zemeckis",
+    "runtime": 144,
+    "comment": ""
+        }
+
+data_4 = {
+    "id": 4,
+    "title": "Inception",
+    "year": 2010,
+    "genre": "action",
+    "director": "Christopher Nolan",
+    "runtime": 148,
+    "comment": ""
+        }
+
+
+data_5 = {
+    "id": 5,
+    "title": "Joker",
+    "year": 2019,
+    "genre": "crime",
+    "director": "Todd Phillips",
+    "runtime": 122,
+    "comment": ""
+        }
+
+db.movie_collection.insert_one(data_1)
+db.movie_collection.insert_one(data_2)
+db.movie_collection.insert_one(data_3)
+db.movie_collection.insert_one(data_4)
+db.movie_collection.insert_one(data_5)
 
 
 
@@ -74,23 +121,19 @@ def hello():
 
 @app.route('/movies/', methods=['GET'])
 def get_movie():
-    # buvo tiesiog jsonify(dictlist)
     movies = list(db.movie_collection.find({}, ))
     return Response(json_util.dumps(movies), status=200, mimetype='application/json')
-    return jsonify(dictlist)
 
 
 @app.route('/movies/<int:movie_id>', methods=['GET'])
 def get_all_movies(movie_id):
     if movie_id == 50:
-        movies = db.my_collection.find_one()
-        print(movies)
-        return Response(json_util.dumps(movies),status=200, mimetype="application/json")
+        movies = db.movie_collection.find_one()
+        return Response(json.dumps(movies),status=200, mimetype="application/json")
     for i in dictlist:
         if i['id'] == movie_id:
             # 200 OK
-            return i
-            # return Response(json.dumps(i), status=200, mimetype="application/json")
+            return Response(json.dumps(i), status=200, mimetype="application/json")
     return Response(json.dumps({'Error': 'No such id exists'}),status=404, mimetype="application/json")
 
 
@@ -200,6 +243,8 @@ def add_to_coll(coll, data):
 
 
 if __name__=='__main__':
+    print(pymongo.version)
+    print(pymongo.has_c())
     app.run(host="0.0.0.0", debug = True, port=80)
 
     # Add movie
@@ -212,4 +257,5 @@ if __name__=='__main__':
        # 'reviews': []
     #}
     #add_to_coll(collection, temp_data)
-	
+    
+ 

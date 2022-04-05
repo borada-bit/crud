@@ -1,7 +1,8 @@
 #!/bin/bash
 
-docker stop crud_test
-docker rm crud_test
-docker image rm crud
-docker build -t crud .
-docker run -d -p 80:80 --name crud_test crud  
+docker-compose rm -f
+docker rmi crud_web
+docker rmi crud_mongo_seed
+docker-compose build
+docker-compose up
+

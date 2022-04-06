@@ -1,21 +1,25 @@
-from email import header
-import mimetypes
-from wsgiref import headers
-from xxlimited import new
-from flask import Flask, request, jsonify, json, Response
-import jsonschema
-from jsonschema import validate
-import random
-import pymongo.errors
-from pymongo import MongoClient
+from flask import Flask, request, json, Response
+from pymongo import MongoClient, errors
 from bson import json_util
+import random
 
+### FLASK
 app = Flask(__name__)
 
-client = MongoClient("mongodb://mongo:27017")
-client.drop_database('movie_database')
-db = client.movie_database
-db.create_collection('movie_collection', validator={
+###  MONGO CLIENT
+g_client = MongoClient("mongodb://mongo:27017")
+
+# DATABASE NAME movie_database
+g_database_name = 'movie_database'
+# COLLECTION NAME movie_collection
+g_collection_name = 'movie_collection'
+
+# DROPS IF ALREADY EXISTS
+g_client.drop_database('movie_database')
+g_db = g_client[g_database_name]
+
+### VALIDATOR
+g_db.create_collection(g_collection_name, validator={
     '$jsonSchema': {
             'bsonType': 'object',
             'additionalProperties': True,
@@ -50,7 +54,7 @@ db.create_collection('movie_collection', validator={
         }
     })
 
-
+### SAMPLE  DATA BELOW 
 data_1 = {
     "id": 1,
     "title": "Dune",
@@ -102,121 +106,139 @@ data_5 = {
     "comment": ""
         }
 
-data_6 = {
-    "title": "Joker",
-    "year": 2019,
-    "director": "Todd Phillips",
-    "runtime": 122,
-        }
+### DATABASE METHODS DEFINED BELOW
 
-
-def add_to_coll(coll, data):
+## need to assign random id?
+# Returns True if adding succesffuly
+def mongo_add_movie(data):
     try:
-        coll.insert_one(data)
-    except pymongo.errors.WriteError as e:
-        print('Error inserting. Wrong schema')
+        g_db[g_collection_name].insert_one(data)
+        return True
+    except:
+        print('Error inserting.')
+        return False
 
+# returns cursor object of all movies
+def mongo_get_all_movies():
+    return g_db[g_collection_name].find({}, {'_id': 0})
+
+
+# returns cursor object of found(None if no movie found with such id) movie 
+def mongo_get_movie(movie_id: int):
+    return g_db[g_collection_name].find_one({'id': movie_id}, {'_id': 0})
+
+
+def mongo_update_movie(movie_id: int, query_filter, query_value):
+    g_db[g_collection_name].update_one(query_filter, query_value)
+
+
+def mongo_delete_movie(movie_id:int):
+    g_db[g_collection_name].delete_one({'id':movie_id})
+
+
+### REST/FLASK/API? METHODS BELOW
 
 @app.route('/')
-def hello():
-    return ('Hello!')
+def index():
+    return ('Welcome!')
 
 
 @app.route('/movies/', methods=['GET'])
 def get_movie():
-    movies = list(db.movie_collection.find({}, {'_id': 0}))
-    return Response(json_util.dumps(movies), status=200, mimetype='application/json')
+    movies = mongo_get_all_movies()
+    return Response(json.dumps(list(movies)), status=200, mimetype='application/json')
 
 
 @app.route('/movies/<int:movie_id>', methods=['GET'])
 def get_all_movies(movie_id):
-    movie = db.movie_collection.find_one({'id': movie_id}, {'_id': 0}) 
+    movie = mongo_get_movie(movie_id)
     if movie is None:
+        # 404 NOT FOUND
         return Response(json.dumps({'Error': 'No such id exists'}),status=404, mimetype="application/json")
     # 200 OK
     return Response(json_util.dumps(movie), status=200, mimetype="application/json")
 
 
-# Content-location /api/movies/80
-# kazkas tokio
-# pakeist visur responsus i tinkama locationa
 @app.route('/movies/', methods=['POST'])
 def create_movie():
     movie_data = json.loads(request.data)
-    ## validating json
-    try:
-        validate(instance=movie_data, schema=schema)
-    except jsonschema.exceptions.ValidationError as e:
-        # 422 UNPROCESSABLE ENTITY
-        return Response(json.dumps({'Error': 'Wrong schema'}), status=422, mimetype="application/json")
     
-    ## assign random 
+    # assign random id
     while True:
         generated_id = random.randint(0, 1000)
         movie_data['id'] = generated_id
 
-        all_movies = list(db.movie_collection.find({}))
+        all_movies = list(g_db.movie_collection.find({}))
         for obj in all_movies:
             if movie_data['id'] == obj['id']:
                 continue
         break
              
     ## ALL CHECKS HAVE PASSED
-    db.movie_collection.insert_one(movie_data)
-    # 201 CREATED
-    resp = Response(json_util.dumps(movie_data), status=201, mimetype="application/json")
-    resp.headers['Content-Location'] = "/movies/"+str(movie_data['id'])
-    return resp
-
+    added = mongo_add_movie(movie_data)
+    if added is True:
+        # 201 CREATED
+        resp = Response(json_util.dumps(movie_data), status=201, mimetype="application/json")
+        resp.headers['Content-Location'] = "/movies/"+str(movie_data['id'])
+        return resp
+    else:
+        # 422 UNPROCESSABLE ENTITY
+        resp = Response(json_util.dumps(movie_data), status=422, mimetype="application/json")
+        return resp
 
 # 200 status code netinka paupdatinus
+# jeigu neegzistuoja toks ID tada reikia insert, o jeigu exist tada update, nes update_one neideda naujos reiksmes
 @app.route('/movies/<int:movie_id>', methods=['PUT'])
 def update_movie(movie_id):
     # CHECK IF JSON IS OF GOOD FORMAT
     new_movie_data = json.loads(request.data)
-    try:
-        validate(instance=new_movie_data, schema=schema)
-    except jsonschema.exceptions.ValidationError as e:
-        return Response(json.dumps({'Error': 'Wrong schema'}), status=422, mimetype="application/json")
-
     # GET OLD MOVIE DATA
-    old_movie_data = list(db.movie_collection.find({'id':movie_id}, {'_id': 0}))
+    old_movie_data = mongo_get_movie(movie_id)
+    # NO MOVIE WITH SUCH ID EXISTS YET, SO PERFORMING MONGO_ADD INSTEAD OF MONGO UPDATE
+    if old_movie_data is None:
+        new_movie_data['id'] = movie_id
+        mongo_add_movie(new_movie_data)
+    else:
+        # UPDATING
+        query_filter = {'id': movie_id}
+        query_value = {'$set': new_movie_data}
+        new_movie_data['id'] = movie_id
+        mongo_update_movie(movie_id, query_filter, query_value)
     
-    # UPDATING
-    query_filter = {'id': movie_id}
-    query_values = {'$set': new_movie_data}
-    # return json.dumps(str(query_filter) + str(new_movie_data))
-    db.movie_collection.update_one(query_filter, query_values)
 
+    response_data = {'old_movie_data': old_movie_data, 'new_movie_data': new_movie_data}
     # 200 OK
-    resp = Response(json.dumps(str('old movie data ') + str(old_movie_data)+str('    new movie data ') + str(new_movie_data)), status=200, mimetype="application/json")
+    resp = Response(json_util.dumps(response_data), status=200, mimetype="application/json")
     resp.headers['Content-Location'] = "/movies/"+str(movie_id)
     return resp
 
 
 # paduodi objekta kuriame yra laukai kurios reikia keisti
+# rodyti new vs old pilnus objektus ar tik pakeistus laukus?
 @app.route('/movies/<int:movie_id>', methods=['PATCH'])
 def patch_movie(movie_id):
     new_movie_data = json.loads(request.data)
     
-    cursor = db.movie_collection.find_one({'id': movie_id})
+    cursor = mongo_get_movie(movie_id)
 
     if cursor is None:
         return Response(json.dumps({'Error': 'No such id exists'}),status=404, mimetype="application/json")
     else:
-        try:
-            validate(instance=new_movie_data, schema=schema)
-        except jsonschema.exceptions.ValidationError as e:
-            return Response(json.dumps({'Error': 'Wrong schema'}), status=422, mimetype="application/json")
-
-        old_movie_data = list(cursor)
-
+        # query filters for mongo_db
         query_filter = {'id': movie_id}
         query_values = {'$set': new_movie_data}
-        db.movie_collection.update_one(query_filter, query_values)
+        # saving old movie data for output
+        old_movie_data = g_db.movie_collection.find_one(query_filter, {'_id':0})
+        # updating 
+        g_db.movie_collection.update_one(query_filter, query_values)
+        # getting updated movie data for output
+        new_movie_data = g_db.movie_collection.find_one(query_filter, {'_id':0})
+
+        # output
+        response_data = {'old_movie_data': old_movie_data, 'new_movie_data': new_movie_data}
 
         # 200 OK
-        resp = Response(json.dumps(str('old movie data ') + str(old_movie_data)+str('    new movie data ') + str(new_movie_data)), status=200, mimetype="application/json")
+        resp = Response(json.dumps(response_data), status=200, mimetype="application/json")
         resp.headers['Content-Location'] = "/movies/"+str(movie_id)
         return resp
 
@@ -224,25 +246,21 @@ def patch_movie(movie_id):
 # IDEMPOTENT
 @app.route('/movies/<int:movie_id>', methods=['DELETE'])
 def delete_movie(movie_id):
-    cursor = db.movie_collection.find_one({'id':movie_id}, {'_id':0}) 
+    cursor = mongo_get_movie(movie_id)
     if cursor is None:
         # 404 NOT FOUND
-        return Response(json.dumps({'Error': 'No such id exists'}),status=404, mimetype="application/json")
+        return Response(json.dumps({'Error': f'No such id:{movie_id} exists'}),status=404, mimetype="application/json")
     else: 
         movie_data = cursor.copy()
-        db.movie_collection.delete_one({'id':movie_id})
+        mongo_delete_movie(movie_id)
         # 200 OK
         return Response(json_util.dumps(movie_data),status=200, mimetype="application/json")
-    
-
 
 
 if __name__=='__main__':
-    add_to_coll(db.movie_collection, data_1)
-    add_to_coll(db.movie_collection, data_2)
-    add_to_coll(db.movie_collection, data_3)
-    add_to_coll(db.movie_collection, data_4)
-    add_to_coll(db.movie_collection, data_5)
-    add_to_coll(db.movie_collection, data_6)
+    mongo_add_movie(data_1)
+    mongo_add_movie(data_2)
+    mongo_add_movie(data_3)
+    mongo_add_movie(data_4)
+    mongo_add_movie(data_5)
     app.run(host="0.0.0.0", debug = True, port=80)
- 

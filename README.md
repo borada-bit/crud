@@ -3,6 +3,7 @@ Sample Web Service CRUD application Movie database
 
 
 ## Requirements:
+
 docker
 
 git
@@ -13,15 +14,9 @@ git
 
 `cd crud`
 
-`docker build -t crud .`
+`docker-compose build`
 
-`docker run -d -p 80:80 --name crud_test crud`
-
-OR
-
-`chmod +x run.sh`
-
-`./run.sh` starts app in detached mode, `docker logs crud_test` to see output
+`docker-compose up`
 
 
 Restful service address `localhost:80/movies`
@@ -38,6 +33,8 @@ Movie json structure {
 	"director": string,
 	
 	"runtime": integer
+	
+	"comment": string
 }
 
 
@@ -49,8 +46,11 @@ Movie json structure {
 (CREATE)
 POST http://localhost:80/movies
 
-Example: `curl -i -H "Content-Type: application/json" -X POST -d '{"title":"Avengers", "year": 2012, "genre": "action", "director": "Josh Whedon", "runtime": 143}' http://localhost:80/movies/`
+Example: 
+`curl -i -H "Content-Type: application/json" -X POST -d '{"title":"Avengers", "year": 2012, "genre": "action", "director": "Josh Whedon", "runtime": 143}' http://localhost:80/movies/`
 
+Example of bad schema:
+`curl -i -H "Content-Type: application/json" -X POST -d '{"title":"Avengers", "year": 2012, "director": "Josh Whedon", "runtime": 143}' http://localhost:80/movies/`
 
 (READ)
 GET http://localhost:80/movies/<movie_id>

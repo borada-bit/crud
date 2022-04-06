@@ -65,12 +65,8 @@ Example: `curl http://localhost:80/movies/ -X GET`
 
 
 (UPDATE)
-<<<<<<< HEAD
 PUT http://localhost:80/movies/<movie_id>
-=======
-PUT http://localhost:80/movies/
 
->>>>>>> 04609143b0fd52fc568c98ed4e55f538fb3d37b8
 Example: `curl -i -H "Content-Type: application/json" -X PUT -d '{"title":"The Batman Begins", "year": 2005, "genre": "action", "director": "Christopher Nolan", "runtime": 140}' http://localhost:80/movies/1`
 
 

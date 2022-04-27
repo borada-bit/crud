@@ -19,5 +19,3 @@ services:
       - "80:80"
     environment:
       DB_URL: 'mongo:27017'
-
-

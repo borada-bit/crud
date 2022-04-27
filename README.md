@@ -1,81 +1,61 @@
-# crud web service
-Sample Web Service CRUD application Movie database
-
+# API for Movie Database
+Simple Web Service CRUD application movie database 
 
 ## Requirements:
-
-docker
-
-git
+* docker
+* git
 
 ## To launch:
+```bash
+git clone https://github.com/borada-bit/crud.git
+cd crud
+docker-compose build
+docker-compose up
+```
 
-`git clone https://github.com/borada-bit/crud.git`
+## Usage
+Test the API with [Postman](https://www.postman.com/).
 
-`cd crud`
+### Example JSON
 
-`docker-compose build`
-
-`docker-compose up`
-
-
-Restful service address `localhost:80/movies`
-
-
-Movie json structure {
-
-	"title": string,
-	
-	"year": integer,
-	
-	"genre": string,
-	
-	"director": string,
-	
-	"runtime": integer
-	
-	"comment": string
-}
-
+```JSON
+[ 
+	{
+	"title": "Avengers",
+	"year": 2012,
+	"genre": "Action",
+	"director": "Josh Whedon",
+	"runtime": 143,
+	"comment": "Amazing action movie!"
+	}
+]
+```
 
 ## RESTFUL API:
+### POST 
 
-`curl is a command-line tool for transferring data using various network protocols`
+`http://localhost:80/movies/`
 
+### GET
+#### Get a movie by id:
 
-(CREATE)
-POST http://localhost:80/movies
+`http://localhost:80/movies/<movie_id>`
 
-Example: 
-`curl -i -H "Content-Type: application/json" -X POST -d '{"title":"Avengers", "year": 2012, "genre": "action", "director": "Josh Whedon", "runtime": 143}' http://localhost:80/movies/`
+#### Get all movies:
 
-Example of bad schema:
-`curl -i -H "Content-Type: application/json" -X POST -d '{"title":"Avengers", "year": 2012, "director": "Josh Whedon", "runtime": 143}' http://localhost:80/movies/`
+`http://localhost:80/movies/`
 
-(READ)
-GET http://localhost:80/movies/<movie_id>
+### PUT
+#### Update movie by id:
 
-Example: `curl http://localhost:80/movies/1 -X GET`
+`http://localhost:80/movies/<movie_id>`
 
+### PATCH
+#### Modify movie fields by id:
 
-(READ ALL)
-GET http://localhost:80/movies/
+`http://localhost:80/movies/<movie_id>`
 
-Example: `curl http://localhost:80/movies/ -X GET`
+### DELETE 
+#### Delete movie by id:
 
-
-(UPDATE)
-PUT http://localhost:80/movies/<movie_id>
-
-Example: `curl -i -H "Content-Type: application/json" -X PUT -d '{"title":"The Batman Begins", "year": 2005, "genre": "action", "director": "Christopher Nolan", "runtime": 140}' http://localhost:80/movies/1`
-
-
-(PATCH)
-PATCH http://localhost:80/movies/<movie_id>
-Example: `curl -i -H "Content-Type: application/json" -X PATCH -d '{"genre": "Thriller", "runtime": 180}' http://localhost:80/movies/1`
-
-
-(DELETE)
-DELETE http://localhost:80/movies/<movie_id>
-
-Example: `curl http://localhost:80/movies/1 -X DELETE`
+`http://localhost:80/movies/<movie_id>`

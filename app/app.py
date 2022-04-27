@@ -196,6 +196,8 @@ def create_movie():
 
 
 # 200 status code netinka paupdatinus
+# Padavus json kuris nepraeina verification, siuncia kad 200, nors nieko neideda
+# Toks pat bug kaip Patch kai kableliu truksta tada html errro
 # jeigu neegzistuoja toks ID tada reikia insert, o jeigu exist tada update, nes update_one neideda naujos reiksmes
 @app.route('/movies/<int:movie_id>', methods=['PUT'])
 def update_movie(movie_id):
@@ -223,6 +225,8 @@ def update_movie(movie_id):
 
 # paduodi objekta kuriame yra laukai kurios reikia keisti
 # parodo new vs old pilnus objektus
+# BUGS kai paduodi netvarkinga json( be kableliu)
+# BUGS kai paduodi movie_id bloga
 @app.route('/movies/<int:movie_id>', methods=['PATCH'])
 def patch_movie(movie_id):
     new_movie_data = json.loads(request.data)

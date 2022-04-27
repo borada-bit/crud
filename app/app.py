@@ -1,24 +1,30 @@
+import py_compile
 from flask import Flask, request, json, Response
 from pymongo import MongoClient, errors
 from bson import json_util
 import random
 
+
 ### FLASK
 app = Flask(__name__)
 
+
 ###  MONGO CLIENT
 g_client = MongoClient("mongodb://mongo:27017")
+
 
 # DATABASE NAME movie_database
 g_database_name = 'movie_database'
 # COLLECTION NAME movie_collection
 g_collection_name = 'movie_collection'
 
+
 # DROPS IF ALREADY EXISTS
 g_client.drop_database('movie_database')
 g_db = g_client[g_database_name]
 
-### VALIDATOR
+
+### MONGO VALIDATOR BEFORE INSERTING
 g_db.create_collection(g_collection_name, validator={
     '$jsonSchema': {
             'bsonType': 'object',
@@ -53,6 +59,7 @@ g_db.create_collection(g_collection_name, validator={
             }
         }
     })
+
 
 ### SAMPLE  DATA BELOW 
 data_1 = {
@@ -108,9 +115,10 @@ data_5 = {
 
 ### DATABASE METHODS DEFINED BELOW
 
-## need to assign random id?
 # Returns True if adding succesffuly
+# some better implemenation?
 def mongo_add_movie(data):
+    # seems bad
     try:
         g_db[g_collection_name].insert_one(data)
         return True
@@ -128,6 +136,7 @@ def mongo_get_movie(movie_id: int):
     return g_db[g_collection_name].find_one({'id': movie_id}, {'_id': 0})
 
 
+# Something with error handling because now this func does nothing more than update_one
 def mongo_update_movie(movie_id: int, query_filter, query_value):
     g_db[g_collection_name].update_one(query_filter, query_value)
 
@@ -137,7 +146,6 @@ def mongo_delete_movie(movie_id:int):
 
 
 ### REST/FLASK/API? METHODS BELOW
-
 @app.route('/')
 def index():
     return ('Welcome!')
@@ -186,23 +194,23 @@ def create_movie():
         resp = Response(json_util.dumps(movie_data), status=422, mimetype="application/json")
         return resp
 
+
 # 200 status code netinka paupdatinus
 # jeigu neegzistuoja toks ID tada reikia insert, o jeigu exist tada update, nes update_one neideda naujos reiksmes
 @app.route('/movies/<int:movie_id>', methods=['PUT'])
 def update_movie(movie_id):
     # CHECK IF JSON IS OF GOOD FORMAT
     new_movie_data = json.loads(request.data)
+    new_movie_data['id'] = movie_id
     # GET OLD MOVIE DATA
     old_movie_data = mongo_get_movie(movie_id)
     # NO MOVIE WITH SUCH ID EXISTS YET, SO PERFORMING MONGO_ADD INSTEAD OF MONGO UPDATE
     if old_movie_data is None:
-        new_movie_data['id'] = movie_id
         mongo_add_movie(new_movie_data)
     else:
         # UPDATING
         query_filter = {'id': movie_id}
         query_value = {'$set': new_movie_data}
-        new_movie_data['id'] = movie_id
         mongo_update_movie(movie_id, query_filter, query_value)
     
 
@@ -214,7 +222,7 @@ def update_movie(movie_id):
 
 
 # paduodi objekta kuriame yra laukai kurios reikia keisti
-# rodyti new vs old pilnus objektus ar tik pakeistus laukus?
+# parodo new vs old pilnus objektus
 @app.route('/movies/<int:movie_id>', methods=['PATCH'])
 def patch_movie(movie_id):
     new_movie_data = json.loads(request.data)
@@ -230,7 +238,12 @@ def patch_movie(movie_id):
         # saving old movie data for output
         old_movie_data = g_db.movie_collection.find_one(query_filter, {'_id':0})
         # updating 
-        g_db.movie_collection.update_one(query_filter, query_values)
+        try:
+            g_db.movie_collection.update_one(query_filter, query_values)
+        # VALIDATION FAILED
+        except errors.WriteError:
+            # 422 UNPROCESSABLE ENTITY
+            return Response(json_util.dumps(new_movie_data),status=422, mimetype="application/json")
         # getting updated movie data for output
         new_movie_data = g_db.movie_collection.find_one(query_filter, {'_id':0})
 
@@ -257,10 +270,15 @@ def delete_movie(movie_id):
         return Response(json_util.dumps(movie_data),status=200, mimetype="application/json")
 
 
-if __name__=='__main__':
+## MAIN
+def main():
     mongo_add_movie(data_1)
     mongo_add_movie(data_2)
     mongo_add_movie(data_3)
     mongo_add_movie(data_4)
     mongo_add_movie(data_5)
     app.run(host="0.0.0.0", debug = True, port=80)
+
+
+if __name__=='__main__':
+    main()

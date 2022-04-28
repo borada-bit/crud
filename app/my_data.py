@@ -1,0 +1,47 @@
+### SAMPLE  DATA BELOW
+data = [
+    {
+        "id": 1,
+        "title": "Dune",
+        "year": 2021,
+        "genre": "sci-fi",
+        "director": "Dennis Villenueve",
+        "runtime": 150,
+        "comment": "Amazing sci-fi movie!",
+    },
+    {
+        "id": 2,
+        "title": "Batman",
+        "year": 2022,
+        "genre": "action",
+        "director": "Matt Reeves",
+        "runtime": 176,
+        "comment": "Wonderful thriller!",
+    },
+    {
+        "id": 3,
+        "title": "Forrest Gump",
+        "year": 1994,
+        "genre": "drama",
+        "director": "Robert Zemeckis",
+        "runtime": 144,
+        "comment": "",
+    },
+    {
+        "id": 4,
+        "title": "Inception",
+        "year": 2010,
+        "genre": "action",
+        "director": "Christopher Nolan",
+        "runtime": 148,
+        "comment": "What a twist!",
+    },
+    {
+        "id": 5,
+        "title": "Joker",
+        "year": 2019,
+        "genre": "crime",
+        "director": "Todd Phillips",
+        "runtime": 122,
+    },
+]

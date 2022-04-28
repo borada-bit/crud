@@ -21,9 +21,10 @@ g_db.create_collection(
     validator={
         "$jsonSchema": {
             "bsonType": "object",
-            "additionalProperties": True,
-            "required": ["title", "year", "genre", "director", "runtime"],
+            "required": ["id", "title", "year", "genre", "director", "runtime"],
             "properties": {
+                "_id": {"bsonType": "objectId"},
+                "id": {"bsonType": "int"},
                 "title": {"bsonType": "string"},
                 "director": {
                     "bsonType": "string",
@@ -42,8 +43,11 @@ g_db.create_collection(
                     "description": "must be a string if the field exists",
                 },
             },
+            "additionalProperties": False,
         }
     },
+    validationLevel="strict",
+    validationAction="error",
 )
 
 g_collection = g_db[g_collection_name]
@@ -72,7 +76,12 @@ def get_movie(movie_id: int):
 
 # Something with error handling because now this func does nothing more than update_one
 def update_movie(movie_id: int, query_filter, query_value):
-    g_collection.update_one(query_filter, query_value)
+    try:
+        return g_collection.update_one(query_filter, query_value)
+        return True
+    # nepreajo verif
+    except:
+        return False
 
 
 def delete_movie(movie_id: int):

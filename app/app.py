@@ -2,7 +2,8 @@ import py_compile
 from flask import Flask, request, json, Response
 from pymongo import MongoClient, errors
 from bson import json_util
-import app.my_data as my_data
+import my_data
+import my_mongo
 import random
 
 
@@ -56,41 +57,10 @@ g_db.create_collection(
     },
 )
 
-
-### DATABASE METHODS DEFINED BELOW
-
-# Returns True if adding succesffuly
-# some better implemenation?
-def mongo_add_movie(data):
-    # seems bad
-    try:
-        g_db[g_collection_name].insert_one(data)
-        return True
-    except:
-        print("Error inserting.")
-        return False
+g_collection = g_db[g_collection_name]
 
 
-# returns cursor object of all movies
-def mongo_get_all_movies():
-    return g_db[g_collection_name].find({}, {"_id": 0})
-
-
-# returns cursor object of found(None if no movie found with such id) movie
-def mongo_get_movie(movie_id: int):
-    return g_db[g_collection_name].find_one({"id": movie_id}, {"_id": 0})
-
-
-# Something with error handling because now this func does nothing more than update_one
-def mongo_update_movie(movie_id: int, query_filter, query_value):
-    g_db[g_collection_name].update_one(query_filter, query_value)
-
-
-def mongo_delete_movie(movie_id: int):
-    g_db[g_collection_name].delete_one({"id": movie_id})
-
-
-### REST/FLASK/API? METHODS BELOW
+### REST/API METHODS BELOW
 @app.route("/")
 def index():
     return "Welcome!"
@@ -98,13 +68,13 @@ def index():
 
 @app.route("/movies/", methods=["GET"])
 def get_movie():
-    movies = mongo_get_all_movies()
+    movies = my_mongo.get_all_movies(g_collection)
     return Response(json.dumps(list(movies)), status=200, mimetype="application/json")
 
 
 @app.route("/movies/<int:movie_id>", methods=["GET"])
 def get_all_movies(movie_id):
-    movie = mongo_get_movie(movie_id)
+    movie = my_mongo.get_movie(g_collection, movie_id)
     if movie is None:
         # 404 NOT FOUND
         return Response(
@@ -132,7 +102,7 @@ def create_movie():
         break
 
     ## ALL CHECKS HAVE PASSED
-    added = mongo_add_movie(movie_data)
+    added = my_mongo.mongo_add_movie(g_collection, movie_data)
     if added is True:
         # 201 CREATED
         resp = Response(
@@ -158,15 +128,15 @@ def update_movie(movie_id):
     new_movie_data = json.loads(request.data)
     new_movie_data["id"] = movie_id
     # GET OLD MOVIE DATA
-    old_movie_data = mongo_get_movie(movie_id)
+    old_movie_data = my_mongo.get_movie(g_collection, movie_id)
     # NO MOVIE WITH SUCH ID EXISTS YET, SO PERFORMING MONGO_ADD INSTEAD OF MONGO UPDATE
     if old_movie_data is None:
-        mongo_add_movie(new_movie_data)
+        my_mongo.add_movie(g_collection, new_movie_data)
     else:
         # UPDATING
         query_filter = {"id": movie_id}
         query_value = {"$set": new_movie_data}
-        mongo_update_movie(movie_id, query_filter, query_value)
+        my_mongo.update_movie(g_collection, movie_id, query_filter, query_value)
 
     response_data = {"old_movie_data": old_movie_data, "new_movie_data": new_movie_data}
     # 200 OK
@@ -185,7 +155,7 @@ def update_movie(movie_id):
 def patch_movie(movie_id):
     new_movie_data = json.loads(request.data)
 
-    cursor = mongo_get_movie(movie_id)
+    cursor = my_mongo.get_movie(g_collection, movie_id)
 
     if cursor is None:
         return Response(
@@ -228,7 +198,7 @@ def patch_movie(movie_id):
 # IDEMPOTENT
 @app.route("/movies/<int:movie_id>", methods=["DELETE"])
 def delete_movie(movie_id):
-    cursor = mongo_get_movie(movie_id)
+    cursor = my_mongo.get_movie(g_collection, movie_id)
     if cursor is None:
         # 404 NOT FOUND
         return Response(
@@ -238,7 +208,7 @@ def delete_movie(movie_id):
         )
     else:
         movie_data = cursor.copy()
-        mongo_delete_movie(movie_id)
+        my_mongo.delete_movie(g_collection, movie_id)
         # 200 OK
         return Response(
             json_util.dumps(movie_data), status=200, mimetype="application/json"
@@ -248,7 +218,7 @@ def delete_movie(movie_id):
 ## MAIN
 def main():
     for json_obj in my_data.data:
-        mongo_add_movie(json_obj)
+        my_mongo.add_movie(g_collection, json_obj)
 
     app.run(host="0.0.0.0", debug=True, port=80)
 

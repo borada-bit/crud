@@ -1,7 +1,5 @@
 import py_compile
 from flask import Flask, request, json, Response
-from pymongo import MongoClient, errors
-from bson import json_util
 import my_data
 import my_mongo
 import random
@@ -9,55 +7,6 @@ import random
 
 ### FLASK
 app = Flask(__name__)
-
-
-###  MONGO CLIENT
-g_client = MongoClient("mongodb://mongo:27017")
-
-
-# DATABASE NAME movie_database
-g_database_name = "movie_database"
-# COLLECTION NAME movie_collection
-g_collection_name = "movie_collection"
-
-
-# DROPS IF ALREADY EXISTS
-g_client.drop_database("movie_database")
-g_db = g_client[g_database_name]
-
-
-### MONGO VALIDATOR BEFORE INSERTING
-g_db.create_collection(
-    g_collection_name,
-    validator={
-        "$jsonSchema": {
-            "bsonType": "object",
-            "additionalProperties": True,
-            "required": ["title", "year", "genre", "director", "runtime"],
-            "properties": {
-                "title": {"bsonType": "string"},
-                "director": {
-                    "bsonType": "string",
-                    "description": "Set to default value",
-                },
-                "genre": {"bsonType": "string"},
-                "year": {"bsonType": "int", "minimum": 1920, "maximum": 2022},
-                "runtime": {
-                    "bsonType": "int",
-                    "minimum": 1,
-                    "maximum": 500,
-                    "description": "must be an integer in [ 2017, 3017 ] and is required",
-                },
-                "comment": {
-                    "bsonType": ["string"],
-                    "description": "must be a string if the field exists",
-                },
-            },
-        }
-    },
-)
-
-g_collection = g_db[g_collection_name]
 
 
 ### REST/API METHODS BELOW
@@ -68,13 +17,13 @@ def index():
 
 @app.route("/movies/", methods=["GET"])
 def get_movie():
-    movies = my_mongo.get_all_movies(g_collection)
+    movies = my_mongo.get_all_movies()
     return Response(json.dumps(list(movies)), status=200, mimetype="application/json")
 
 
 @app.route("/movies/<int:movie_id>", methods=["GET"])
 def get_all_movies(movie_id):
-    movie = my_mongo.get_movie(g_collection, movie_id)
+    movie = my_mongo.get_movie(movie_id)
     if movie is None:
         # 404 NOT FOUND
         return Response(
@@ -83,7 +32,7 @@ def get_all_movies(movie_id):
             mimetype="application/json",
         )
     # 200 OK
-    return Response(json_util.dumps(movie), status=200, mimetype="application/json")
+    return Response(json.dumps(movie), status=200, mimetype="application/json")
 
 
 @app.route("/movies/", methods=["POST"])
@@ -95,26 +44,25 @@ def create_movie():
         generated_id = random.randint(0, 1000)
         movie_data["id"] = generated_id
 
-        all_movies = list(g_db.movie_collection.find({}))
+        # all_movies = list(g_db.movie_collection.find({}))
+        all_movies = list(my_mongo.get_all_movies())
         for obj in all_movies:
             if movie_data["id"] == obj["id"]:
                 continue
         break
 
     ## ALL CHECKS HAVE PASSED
-    added = my_mongo.mongo_add_movie(g_collection, movie_data)
+    # passing copy of movie data so it does not add mongo _id field and can return response with json dumps
+    added = my_mongo.add_movie(movie_data.copy())
     if added is True:
         # 201 CREATED
-        resp = Response(
-            json_util.dumps(movie_data), status=201, mimetype="application/json"
-        )
+        resp = Response(json.dumps(movie_data), status=201, mimetype="application/json")
+        # Somehow make this header below fit into Response constructor?
         resp.headers["Content-Location"] = "/movies/" + str(movie_data["id"])
         return resp
     else:
         # 422 UNPROCESSABLE ENTITY
-        resp = Response(
-            json_util.dumps(movie_data), status=422, mimetype="application/json"
-        )
+        resp = Response(json.dumps(movie_data), status=422, mimetype="application/json")
         return resp
 
 
@@ -128,21 +76,19 @@ def update_movie(movie_id):
     new_movie_data = json.loads(request.data)
     new_movie_data["id"] = movie_id
     # GET OLD MOVIE DATA
-    old_movie_data = my_mongo.get_movie(g_collection, movie_id)
+    old_movie_data = my_mongo.get_movie(movie_id)
     # NO MOVIE WITH SUCH ID EXISTS YET, SO PERFORMING MONGO_ADD INSTEAD OF MONGO UPDATE
     if old_movie_data is None:
-        my_mongo.add_movie(g_collection, new_movie_data)
+        my_mongo.add_movie(new_movie_data)
     else:
         # UPDATING
         query_filter = {"id": movie_id}
         query_value = {"$set": new_movie_data}
-        my_mongo.update_movie(g_collection, movie_id, query_filter, query_value)
+        my_mongo.update_movie(movie_id, query_filter, query_value)
 
     response_data = {"old_movie_data": old_movie_data, "new_movie_data": new_movie_data}
     # 200 OK
-    resp = Response(
-        json_util.dumps(response_data), status=200, mimetype="application/json"
-    )
+    resp = Response(json.dumps(response_data), status=200, mimetype="application/json")
     resp.headers["Content-Location"] = "/movies/" + str(movie_id)
     return resp
 
@@ -155,7 +101,7 @@ def update_movie(movie_id):
 def patch_movie(movie_id):
     new_movie_data = json.loads(request.data)
 
-    cursor = my_mongo.get_movie(g_collection, movie_id)
+    cursor = my_mongo.get_movie(movie_id)
 
     if cursor is None:
         return Response(
@@ -168,18 +114,21 @@ def patch_movie(movie_id):
         query_filter = {"id": movie_id}
         query_values = {"$set": new_movie_data}
         # saving old movie data for output
-        old_movie_data = g_db.movie_collection.find_one(query_filter, {"_id": 0})
+        # old_movie_data = g_db.movie_collection.find_one(query_filter, {"_id": 0})
+        old_movie_data = my_mongo.get_movie(movie_id)
         # updating
         try:
-            g_db.movie_collection.update_one(query_filter, query_values)
+            # g_db.movie_collection.update_one(query_filter, query_values)
+            my_mongo.update_movie(movie_id, query_filter, query_values)
         # VALIDATION FAILED
-        except errors.WriteError:
+        except:
             # 422 UNPROCESSABLE ENTITY
             return Response(
-                json_util.dumps(new_movie_data), status=422, mimetype="application/json"
+                json.dumps(new_movie_data), status=422, mimetype="application/json"
             )
         # getting updated movie data for output
-        new_movie_data = g_db.movie_collection.find_one(query_filter, {"_id": 0})
+        # new_movie_data = g_db.movie_collection.find_one(query_filter, {"_id": 0})
+        new_movie_data = my_mongo.get_movie(movie_id)
 
         # output
         response_data = {
@@ -198,7 +147,7 @@ def patch_movie(movie_id):
 # IDEMPOTENT
 @app.route("/movies/<int:movie_id>", methods=["DELETE"])
 def delete_movie(movie_id):
-    cursor = my_mongo.get_movie(g_collection, movie_id)
+    cursor = my_mongo.get_movie(movie_id)
     if cursor is None:
         # 404 NOT FOUND
         return Response(
@@ -208,17 +157,15 @@ def delete_movie(movie_id):
         )
     else:
         movie_data = cursor.copy()
-        my_mongo.delete_movie(g_collection, movie_id)
+        my_mongo.delete_movie(movie_id)
         # 200 OK
-        return Response(
-            json_util.dumps(movie_data), status=200, mimetype="application/json"
-        )
+        return Response(json.dumps(movie_data), status=200, mimetype="application/json")
 
 
 ## MAIN
 def main():
     for json_obj in my_data.data:
-        my_mongo.add_movie(g_collection, json_obj)
+        my_mongo.add_movie(json_obj)
 
     app.run(host="0.0.0.0", debug=True, port=80)
 
